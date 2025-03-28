@@ -1,37 +1,22 @@
-FROM --platform=$BUILDPLATFORM node:16 AS builder
+FROM docker.io/python:3.9-slim as build
 
-WORKDIR /web
+WORKDIR /app
 
-RUN npm install --prefix /web/default & \
-    npm install --prefix /web/berry & \
-    npm install --prefix /web/air & \
-    wait
+COPY requirements.txt .
 
-RUN DISABLE_ESLINT_PLUGIN='true' REACT_APP_VERSION=$(cat ./VERSION) npm run build --prefix /web/default & \
-    DISABLE_ESLINT_PLUGIN='true' REACT_APP_VERSION=$(cat ./VERSION) npm run build --prefix /web/berry & \
-    DISABLE_ESLINT_PLUGIN='true' REACT_APP_VERSION=$(cat ./VERSION) npm run build --prefix /web/air & \
-    wait
+RUN pip install --no-cache-dir -r requirements.txt
 
-FROM golang:alpine AS builder2
+FROM docker.io/python:3.9-slim
 
-RUN apk add --no-cache \
-    gcc \
-    musl-dev \
-    sqlite-dev \
-    build-base
+WORKDIR /app
 
-ENV GO111MODULE=on \
-    CGO_ENABLED=1 \
-    GOOS=linux
+COPY --from=build /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+COPY . .
 
-WORKDIR /build
+# 创建非root用户运行应用
+RUN useradd -m appuser
+USER appuser
 
+EXPOSE 8001
 
-FROM alpine:latest
-
-RUN apk add --no-cache ca-certificates tzdata
-
-
-EXPOSE 3000
-WORKDIR /data
-ENTRYPOINT ["/one-api"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
