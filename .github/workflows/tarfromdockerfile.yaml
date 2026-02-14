@@ -56,7 +56,7 @@ jobs:
           image_tag="${image##*:}"
 
           file_name="${image_name}.tar"
-          git clone https://github.com/TTT-ux-max/docker2tarfork
+          git clone https://github.com/niceqwer55555/docker2tarfork
           cd docker2tarfork
           docker build -t ${image_name} .
           cd ..
